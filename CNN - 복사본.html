@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0"></script>
+
+	<title>숫자 분류 인공지능</title>
+
+	<style>
+		body {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			min-height: 80vh;
+		}
+		.cell { background: lightgray; }
+		.cell.on { background: black; }
+		#result {
+			font-size: 100px;
+			font-weight: bold;
+			color: black;
+		}
+	</style>
+</head>
+
+<body>
+	<div id='main'>
+		<div id='grid'></div>
+		<div id='chart'></div>
+	</div>
+	<div id='result'>?</div>
+	<div id='buttons'>
+		<button onclick='predict()'>예측</button>
+		<button onclick='clearGrid()'>전부 지우기</button>
+	</div>
+
+	<script>
+		const GRID = 28;
+		const gridEl = document.getElementById('grid');
+
+		gridEl.style.display = 'grid';
+		gridEl.style.gridTemplateColumns = `repeat(${GRID}, 15px)`;
+		gridEl.style.gap = '1px';
+
+		const cells = [];
+
+		for (let i = 0; i<GRID*GRID; i++) {
+			const cell = document.createElement('div');
+			cell.style.width = '15px';
+			cell.style.height = '15px';
+			cell.classList.add('cell');
+			gridEl.appendChild(cell);
+			cells.push(cell);
+			cell.addEventListener('click', function() {
+				if (cell.classList.contains('on')) {
+					cell.classList.remove('on');
+				}
+				else {
+					cell.classList.add('on'); }
+			});
+		}
+
+		let isDrawing = false;
+		let eraseMode = false;
+
+		gridEl.addEventListener('mousedown', function(e) {
+			isDrawing = true;
+			eraseMode = e.target.classList.contains('on');
+		});
+
+		document.addEventListener('mouseup', function() {
+			isDrawing = false;
+			eraseMode = false;
+		});
+
+		gridEl.addEventListener('mousemove', function(e) {
+			if (isDrawing && e.target.classList.contains('cell')) {
+				const idx = cells.indexOf(e.target);
+				const x = idx%GRID;
+				const y = Math.floor(idx/GRID);
+
+				for (let dy = -1; dy<=1; dy++) {
+					for (let dx = -1; dx<=1; dx++) {
+						const nx = x+dx;
+						const ny = y+dy;
+						if (nx>=0 && nx<GRID && ny>=0 && ny<=GRID) {
+							const neighbor = cells[ny*GRID+nx];
+							if (eraseMode) neighbor.classList.remove('on');
+							else neighbor.classList.add('on');
+						}
+					}
+				}
+			}
+		});
+
+		const chartEl = document.getElementById('chart');
+
+		chartEl.style.display = 'flex';
+		chartEl.style.flexDirection = 'column';
+		chartEl.style.gap = '8px';
+
+		const charts = [];
+
+		for (let i =0; i<10; i++) {
+			const chart = document.createElement('div');
+			chart.style.width='80px'
+			chart.style.height='20px'
+			chart.style.background = 'lightgray';
+
+			const label = document.createElement('div');
+			label.textContent=i;
+
+			const row=document.createElement('div');
+			row.style.display='flex';
+			row.style.alignItems='center';
+			row.style.gap='3px'
+
+			row.appendChild(label);
+			row.appendChild(chart);
+			chartEl.appendChild(row);
+			charts.push(chart);
+		}
+
+		const mainEl = document.getElementById('main');
+		mainEl.style.display = 'flex';
+		mainEl.style.flexDirection='row';
+		mainEl.style.gap='20px';
+
+		const buttonsEl = document.getElementById('buttons');
+		buttonsEl.style.display = 'flex';
+		buttonsEl.style.flexDirection = 'row';
+		buttonsEl.style.gap = '8px'
+
+		async function predict() {
+    		await tf.setBackend('cpu');
+    		const model = await tf.loadLayersModel('model.json');
+    		const pixels = getPixels().map(x => x / 1.0);
+    		const input = tf.tensor3d([getPixels().reduce((acc, val, i) => {
+   	 			if (i % 28 === 0) acc.push([]);
+    			acc[acc.length-1].push(val);
+    			return acc;
+			}, [])], [1, 28, 28]);
+    		const result = model.predict(input);
+    		const scores = Array.from(result.dataSync());
+    		document.getElementById('result').textContent = scores.indexOf(Math.max(...scores));
+    		scores.forEach(function(score, i) {
+        		charts[i].style.width = (score * 200) + 'px';
+    		});
+		}
+
+		function getPixels() {
+			let pixels = [];
+			for (let i = 0; i < GRID*GRID; i++) {
+				if (cells[i].classList.contains('on')) {
+					pixels.push(1);
+				}
+				else {
+					pixels.push(0);
+				}
+			}
+			return pixels;
+		}
+
+
+		function clearGrid() {
+			cells.forEach(function(cell) {
+				cell.classList.remove('on');
+			});
+		}
+
+	</script>
+
+</body>
+</html>
