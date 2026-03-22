@@ -133,7 +133,7 @@
 
 		async function predict() {
     		await tf.setBackend('cpu');
-    		const model = await tf.loadLayersModel('model.json');
+    		const model = await tf.loadLayersModel('https://wasanstv00.github.io/me-web/model.json');
     		const pixels = getPixels().map(x => x / 1.0);
     		const input = tf.tensor3d([getPixels().reduce((acc, val, i) => {
    	 			if (i % 28 === 0) acc.push([]);
